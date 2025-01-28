@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import * as PropTypes from 'prop-types';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { API_ROUTES, APP_ROUTES } from '../../utils/constants';
 import { useUser } from '../../lib/customHooks';
@@ -21,68 +21,42 @@ function SignIn({ setUser }) {
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState({ error: false, message: '' });
 
-  // ✅ Gestion des erreurs pour l'authentification
   const signIn = async () => {
     try {
       setIsLoading(true);
-      const response = await axios({
-        method: 'post',
-        url: API_ROUTES.SIGN_IN,
-        data: {
-          email,
-          password,
-        },
-      });
+      const response = await axios.post(API_ROUTES.SIGN_IN, { email, password });
 
       if (!response?.data?.token) {
         setNotification({ error: true, message: 'Une erreur est survenue' });
-        console.log('Something went wrong during signing in: ', response);
       } else {
         storeInLocalStorage(response.data.token, response.data.userId);
         setUser(response.data);
         navigate('/');
       }
     } catch (err) {
-      console.error("❌ Erreur de connexion :", err);
-
-      // ✅ Vérifier si le backend a renvoyé un message d'erreur personnalisé
-      if (err.response && err.response.data && err.response.data.message) {
+      if (err.response?.data?.message) {
         setNotification({ error: true, message: err.response.data.message });
       } else {
-        setNotification({ error: true, message: "Une erreur inattendue est survenue." });
+        setNotification({ error: true, message: 'Une erreur inattendue est survenue.' });
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ✅ Gestion des erreurs pour l'inscription (email déjà utilisé)
   const signUp = async () => {
     try {
       setIsLoading(true);
-      const response = await axios({
-        method: 'POST',
-        url: API_ROUTES.SIGN_UP,
-        data: {
-          email,
-          password,
-        },
-      });
+      const response = await axios.post(API_ROUTES.SIGN_UP, { email, password });
 
-      if (!response?.data) {
-        console.log('Something went wrong during signing up: ', response);
-        return;
+      if (response?.data) {
+        setNotification({ error: false, message: 'Votre compte a bien été créé, vous pouvez vous connecter' });
       }
-
-      setNotification({ error: false, message: 'Votre compte a bien été créé, vous pouvez vous connecter' });
     } catch (err) {
-      console.error("❌ Erreur lors de l'inscription :", err);
-
-      // ✅ Vérifier si le backend a renvoyé un message d'erreur personnalisé
-      if (err.response && err.response.data && err.response.data.message) {
+      if (err.response?.data?.message) {
         setNotification({ error: true, message: err.response.data.message });
       } else {
-        setNotification({ error: true, message: "Une erreur inattendue est survenue." });
+        setNotification({ error: true, message: 'Une erreur inattendue est survenue.' });
       }
     } finally {
       setIsLoading(false);
@@ -105,7 +79,7 @@ function SignIn({ setUser }) {
             name="email"
             id="email"
             value={email}
-            onChange={(e) => { setEmail(e.target.value); }}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </label>
         <label htmlFor="password">
@@ -115,7 +89,7 @@ function SignIn({ setUser }) {
             name="password"
             id="password"
             value={password}
-            onChange={(e) => { setPassword(e.target.value); }}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </label>
         <div className={styles.Submit}>
@@ -124,7 +98,7 @@ function SignIn({ setUser }) {
             className="p-2 rounded-md w-1/2 self-center bg-gray-800 text-white hover:bg-gray-800"
             onClick={signIn}
           >
-            {isLoading ? <div className="" /> : null}
+            {isLoading && <div className="" />}
             <span>Se connecter</span>
           </button>
           <span>OU</span>
@@ -133,8 +107,8 @@ function SignIn({ setUser }) {
             className="p-2 rounded-md w-1/2 self-center bg-gray-800 text-white hover:bg-gray-800"
             onClick={signUp}
           >
-            {isLoading ? <div className="mr-2 w-5 h-5 border-l-2 rounded-full animate-spin" /> : null}
-            <span>S'inscrire</span>
+            {isLoading && <div className="mr-2 w-5 h-5 border-l-2 rounded-full animate-spin" />}
+            <span>S&apos;inscrire</span>
           </button>
         </div>
       </div>

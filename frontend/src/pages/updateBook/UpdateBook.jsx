@@ -14,13 +14,15 @@ function UpdateBook() {
   const navigate = useNavigate();
   const { connectedUser, auth, userLoading } = useUser();
   const [created, setCreated] = useState(false);
+
   useEffect(() => {
     if (!userLoading) {
       if (!connectedUser || !auth) {
         navigate(APP_ROUTES.SIGN_IN);
       }
     }
-  }, [userLoading]);
+  }, [userLoading, connectedUser, auth, navigate]);
+
   useEffect(() => {
     async function getItem() {
       const data = await getBook(params.id);
@@ -29,7 +31,7 @@ function UpdateBook() {
       }
     }
     getItem();
-  }, []);
+  }, [params.id]);
 
   return (
     <div className="content-container">
@@ -44,7 +46,7 @@ function UpdateBook() {
         ) : (
           <div className={styles.Created}>
             <h1>Merci!</h1>
-            <p>votre livre a bien été mis à jour</p>
+            <p>Votre livre a bien été mis à jour</p>
             <img src={bookAdd} alt="Livre mis à jour" />
             <Link to="/" className="button">Retour à l&apos;accueil</Link>
           </div>

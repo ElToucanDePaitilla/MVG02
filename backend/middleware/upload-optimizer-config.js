@@ -1,94 +1,66 @@
-// Importation des modules nécessaires
 const multer = require('multer');
-const webp = require('webp-converter');
-const fs = require('fs');
-const path = require('path');
 
-// 📌 Définition des types MIME autorisés et leurs extensions associées
 const MIME_TYPES = {
     'image/jpg': 'jpg',
     'image/jpeg': 'jpg',
     'image/png': 'png',
 };
 
-// 📌 Configuration du stockage des fichiers avec Multer
 const storage = multer.diskStorage({
     destination: (req, file, callback) => {
-        callback(null, 'uploads'); // 📂 Enregistre les fichiers dans le dossier 'uploads'
+        console.log("📂 Destination définie: uploads");
+        callback(null, 'uploads');
     },
     filename: (req, file, callback) => {
         const name = file.originalname.split(' ').join('_').split('.')[0];
         const extension = MIME_TYPES[file.mimetype];
 
         if (!extension) {
+            console.log("❌ Type de fichier non supporté: ", file.mimetype);
             return callback(new Error('❌ Type de fichier non supporté'), null);
         }
 
-        callback(null, `${name}_${Date.now()}.${extension}`);
-    }
+        const filename = `${name}_${Date.now()}.${extension}`;
+        console.log("✅ Nom de fichier généré: ", filename);
+        callback(null, filename);
+    },
 });
 
-// 📌 Middleware pour filtrer les fichiers selon leur type MIME
 const fileFilter = (req, file, callback) => {
-    if (MIME_TYPES[file.mimetype]) {
-        callback(null, true);
-    } else {
-        callback(new Error('❌ Type de fichier non autorisé'), false);
+    if (!MIME_TYPES[file.mimetype]) {
+        console.log("❌ Fichier rejeté: format incorrect -", file.mimetype);
+        return callback(new Error('Votre fichier doit être au format jpg, jpeg ou png et ne pas dépasser 700 Ko.'), false);
     }
+    console.log("✅ Fichier accepté: ", file.mimetype);
+    callback(null, true);
 };
 
-// 📌 Fonction pour convertir les images en WebP après upload
-const convertToWebP = (filePath) => {
-    return new Promise((resolve, reject) => {
-        const webpPath = filePath.replace(/\.(jpg|jpeg|png)$/, '.webp');
-        console.log(`🔄 Conversion en WebP : ${filePath} -> ${webpPath}`);
-
-        webp.cwebp(filePath, webpPath, "-q 80")
-            .then((response) => {
-                console.log(`✅ Image convertie en WebP : ${webpPath}`);
-
-                // Supprime l'image originale après conversion
-                fs.unlink(filePath, (err) => {
-                    if (err) {
-                        console.error("❌ Erreur lors de la suppression de l'image originale :", err);
-                    }
-                });
-                resolve(webpPath);
-            })
-            .catch((error) => {
-                console.error("❌ Erreur lors de la conversion en WebP :", error);
-                reject(error);
-            });
-    });
-};
-
-// 📌 Middleware Multer avec conversion automatique en WebP
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 700 * 1024 } // 📏 0.7MB max
+    limits: { fileSize: 700 * 1024 }, // Limite de 700 Ko
 }).single('image');
 
-// 📌 Middleware final pour gérer l'upload et la conversion en WebP
-const multerWebP = (req, res, next) => {
-    upload(req, res, async (err) => {
+const multerMiddleware = (req, res, next) => {
+    console.log("📢 Début du téléchargement de l'image...");
+    upload(req, res, (err) => {
         if (err) {
-            return res.status(400).json({ error: err.message });
+            let errorMessage = 'Une erreur s\'est produite lors du téléchargement de l\'image.';
+            
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                errorMessage = 'Votre fichier doit être au format jpg, jpeg ou png et ne pas dépasser 700 Ko.';
+                console.log("⚠️ Erreur: Taille du fichier dépassée -", req.file ? req.file.originalname : "Aucun fichier reçu");
+            } else if (err.message) {
+                errorMessage = err.message;
+                console.log("❌ Erreur de téléchargement:", err.message);
+            }
+            
+            console.log("🚨 Erreur envoyée au FE: ", errorMessage);
+            return res.status(400).json({ error: errorMessage });
         }
-
-        if (!req.file) {
-            return res.status(400).json({ error: "❌ Aucun fichier envoyé." });
-        }
-
-        try {
-            req.file.path = await convertToWebP(req.file.path);
-            req.file.filename = path.basename(req.file.path);
-            next();
-        } catch (error) {
-            return res.status(500).json({ error: "❌ Erreur de conversion WebP" });
-        }
+        console.log("✅ Téléchargement réussi: ", req.file ? req.file.filename : "Aucun fichier reçu");
+        next();
     });
 };
 
-// 📌 Exportation du middleware pour être utilisé dans les routes
-module.exports = multerWebP;
+module.exports = multerMiddleware;
