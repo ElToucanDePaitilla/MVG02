@@ -9,9 +9,18 @@ dotenv.config(); // Chargement des variables d'environnement
 // 📌 **Contrôleur pour l'inscription (signup)**
 exports.signup = async (req, res) => {
     try {
+        console.log("📢 Requête d'inscription reçue :", req.body.email);
+
+        // Vérifier que l'email et le mot de passe sont fournis
+        if (!req.body.email || !req.body.password) {
+            console.log("⚠️ Champs requis manquants !");
+            return res.status(400).json({ message: "Email et mot de passe sont requis." });
+        }
+
         // Vérifier si l'email existe déjà
         const existingUser = await User.findOne({ email: req.body.email });
         if (existingUser) {
+            console.log("⚠️ Email déjà utilisé !");
             return res.status(400).json({ message: "Cet email est déjà utilisé. Veuillez en choisir un autre." });
         }
 
@@ -24,10 +33,12 @@ exports.signup = async (req, res) => {
             password: hashedPassword
         });
 
-        // Sauvegarde de l'utilisateur en base de données
+        // Sauvegarde en base de données
         await user.save();
+        console.log("✅ Utilisateur créé avec succès !");
         res.status(201).json({ message: "Compte créé avec succès !" });
     } catch (error) {
+        console.error("❌ Erreur lors de l'inscription :", error);
         res.status(500).json({ message: "Erreur interne du serveur lors de l'inscription.", error });
     }
 };
@@ -35,15 +46,19 @@ exports.signup = async (req, res) => {
 // 📌 **Contrôleur pour la connexion (login)**
 exports.login = async (req, res) => {
     try {
+        console.log("📢 Tentative de connexion avec :", req.body.email);
+
         // Vérifier si l'utilisateur existe
         const user = await User.findOne({ email: req.body.email });
         if (!user) {
+            console.log("⚠️ Email non enregistré !");
             return res.status(401).json({ message: "Cet email n'est pas enregistré. Veuillez vous inscrire." });
         }
 
         // Vérifier si le mot de passe est correct
         const validPassword = await bcrypt.compare(req.body.password, user.password);
         if (!validPassword) {
+            console.log("⚠️ Mot de passe incorrect !");
             return res.status(401).json({ message: "Mot de passe incorrect. Veuillez réessayer." });
         }
 
@@ -54,11 +69,14 @@ exports.login = async (req, res) => {
             { expiresIn: '24h' }
         );
 
+        console.log("✅ Connexion réussie !");
         res.status(200).json({
             userId: user._id,
             token: token
         });
     } catch (error) {
+        console.error("❌ Erreur lors de la connexion :", error);
         res.status(500).json({ message: "Erreur interne du serveur lors de l'authentification.", error });
     }
 };
+
